@@ -24,3 +24,26 @@ gdown 15HIXKBA_0AeZOnaV9h0lciYs_I8VOaem -O tmp/cat.wav
 # Test that we can transcribe tmp/cat.wav (should output 'cat')
 python test-nemo-mwe.py
 ```
+
+## Usage
+
+### Initial (seemingly) working model class
+
+```python
+# See code in test-standalone.py
+import torch
+import torchaudio
+from FastConformer.model import FastConformer
+
+fc = FastConformer(num_labels=1024)
+# Load weights unpacked from https://huggingface.co/nvidia/stt_en_fastconformer_ctc_large/blob/main/stt_en_fastconformer_ctc_large.nemo
+fc.load_pretrained_weights("tmp/nemo_unpacked/model_weights.ckpt", from_nemo=True)
+fc.to('cuda')
+
+samples, sample_rate = torchaudio.load("tmp/cat.wav")
+
+audio_samples = samples
+audio_lens    = torch.tensor(samples.shape[1]).unsqueeze(0)
+
+standalone_log_probs = fc(audio_samples.to('cuda'), audio_lens.to('cuda'))
+```
