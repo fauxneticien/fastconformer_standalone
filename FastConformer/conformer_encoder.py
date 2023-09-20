@@ -20,13 +20,15 @@ from torch import nn as nn
 from torch.nn import LayerNorm
 from typing import Union
 
-from .multi_head_attention import RelPositionMultiHeadAttention
+from .multi_head_attention import (
+    RelPositionMultiHeadAttention,
+    RelPositionMultiHeadAttentionLongformer
+)
 
 __all__ = ['ConformerConvolution', 'ConformerFeedForward', 'ConformerLayer']
 
-def _create_masks(att_context_size, padding_length, max_audio_length, offset, device):
+def _create_masks(att_context_size, padding_length, max_audio_length, offset, device, self_attention_model):
     # Hard-code previously set as class attributes
-    self_attention_model = 'rel_pos'
     att_context_style = 'regular'
 
     if self_attention_model != "rel_pos_local_attn":
@@ -160,19 +162,18 @@ class ConformerLayer(torch.nn.Module):
                 max_cache_len=MHA_max_cache_len,
             )
         elif self_attention_model == 'rel_pos_local_attn':
-            pass
-            # self.self_attn = RelPositionMultiHeadAttentionLongformer(
-            #     n_head=n_heads,
-            #     n_feat=d_model,
-            #     dropout_rate=dropout_att,
-            #     pos_bias_u=pos_bias_u,
-            #     pos_bias_v=pos_bias_v,
-            #     max_cache_len=MHA_max_cache_len,
-            #     att_context_size=att_context_size,
-            #     global_tokens=global_tokens,
-            #     global_tokens_spacing=global_tokens_spacing,
-            #     global_attn_separate=global_attn_separate,
-            # )
+            self.self_attn = RelPositionMultiHeadAttentionLongformer(
+                n_head=n_heads,
+                n_feat=d_model,
+                dropout_rate=dropout_att,
+                pos_bias_u=pos_bias_u,
+                pos_bias_v=pos_bias_v,
+                max_cache_len=MHA_max_cache_len,
+                att_context_size=att_context_size,
+                global_tokens=global_tokens,
+                global_tokens_spacing=global_tokens_spacing,
+                global_attn_separate=global_attn_separate,
+            )
         elif self_attention_model == 'abs_pos':
             pass
             # self.self_attn = MultiHeadAttention(

@@ -63,14 +63,39 @@ from FastConformer.model import FastConformer
 
 fc = FastConformer(num_labels=1024)
 fc.load_pretrained_weights("tmp/nemo_unpacked/model_weights.ckpt", from_nemo=True)
+fc.eval()
 fc.to('cuda')
 
-standalone_log_probs = fc(audio_samples.to('cuda'), audio_lens.to('cuda'))
-# Just use NeMo's decoder for testing
-standalone_hypotheses, all_hyp = asr_model.decoding.ctc_decoder_predictions_tensor(
-    standalone_log_probs,
-    decoder_lengths=preenc_lens,
-    return_hypotheses=False
-)
+with torch.inference_mode():
+    standalone_log_probs = fc(audio_samples.to('cuda'), audio_lens.to('cuda'))
+    # Just use NeMo's decoder for testing
+    standalone_hypotheses, all_hyp = asr_model.decoding.ctc_decoder_predictions_tensor(
+        standalone_log_probs,
+        decoder_lengths=torch.tensor([7]).to('cuda'),
+        return_hypotheses=False
+    )
 
 print(standalone_hypotheses)
+
+print("Using LongFormer-style attention FastConformer...")
+fcl = FastConformer(
+    num_labels=1024,
+    self_attention_model='rel_pos_local_attn',
+    # Set global_tokens to 0 if loading weights from model
+    # not trained with a global token
+    global_tokens=0
+)
+fcl.load_pretrained_weights("tmp/nemo_unpacked/model_weights.ckpt", from_nemo=True)
+fcl.eval()
+fcl.to('cuda')
+
+with torch.inference_mode():
+    fcl_standalone_log_probs = fcl(audio_samples.to('cuda'), audio_lens.to('cuda'))
+    # Just use NeMo's decoder for testing
+    fcl_standalone_hypotheses, fcl_all_hyp = asr_model.decoding.ctc_decoder_predictions_tensor(
+        fcl_standalone_log_probs,
+        decoder_lengths=torch.tensor([7]).to('cuda'),
+        return_hypotheses=False
+    )
+
+print(fcl_standalone_hypotheses)
