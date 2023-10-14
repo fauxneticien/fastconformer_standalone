@@ -17,7 +17,22 @@ class FastConformer(torch.nn.Module):
             num_labels,
             num_layers=18,
             self_attention_model='rel_pos',
-            global_tokens=1
+            global_tokens=1,
+            global_tokens_spacing=1,
+            global_attn_separate=False,
+            subsampling='dw_striding',
+            subsampling_factor=8,
+            subsampling_conv_channels=256,
+            conv_kernel_size=9,
+            conv_context_size=None,
+            d_model=512,
+            n_heads=8,
+            ff_expansion_factor=4,
+            att_context_size=[-1,-1],
+            dropout=0.1,
+            dropout_pre_encoder=0.1,
+            dropout_att=0.1,
+            dropout_emb=0.1
         ):
 
         super().__init__()
@@ -30,11 +45,11 @@ class FastConformer(torch.nn.Module):
         )
 
         self.pre_encode = ConvSubsampling(
-            subsampling='dw_striding',
-            subsampling_factor=8,
+            subsampling=subsampling,
+            subsampling_factor=subsampling_factor,
             feat_in=80,
-            feat_out=512,
-            conv_channels=256,
+            feat_out=d_model,
+            conv_channels=subsampling_conv_channels,
             subsampling_conv_chunking_factor=1,
             activation=torch.nn.ReLU(),
             is_causal=False,
@@ -44,16 +59,17 @@ class FastConformer(torch.nn.Module):
 
         if self_attention_model == 'rel_pos':
             self.pos_enc = RelPositionalEncoding(
-                d_model=512,
-                dropout_rate=0.1,
-                xscale=math.sqrt(512)
+                d_model=d_model,
+                dropout_rate=dropout_pre_encoder,
+                xscale=math.sqrt(d_model)
             )
         elif self_attention_model == 'rel_pos_local_attn':
             self.pos_enc = LocalAttRelPositionalEncoding(
-                att_context_size=[128, 128],
-                d_model=512,
-                dropout_rate=0.1,
-                xscale=math.sqrt(512)
+                att_context_size=att_context_size,
+                d_model=d_model,
+                dropout_rate=dropout,
+                xscale=math.sqrt(d_model),
+                dropout_rate_emb=dropout_emb
             )
         else:
             raise ValueError(f"self_attention_model value must be 'rel_pos' or 'rel_pos_local_attn', not '{self_attention_model}'")
@@ -63,26 +79,23 @@ class FastConformer(torch.nn.Module):
 
         for i in range(num_layers):
             layer = ConformerLayer(
-                d_model=512,
-                d_ff=2048,
-                n_heads=8,
-                conv_kernel_size=9,
-                conv_context_size=[4,4],
+                d_model=d_model,
+                d_ff=d_model * ff_expansion_factor,
+                n_heads=n_heads,
+                conv_kernel_size=conv_kernel_size,
+                conv_context_size=conv_context_size,
                 self_attention_model=self_attention_model,
-                **({
-                    # global_tokens should be set to 0 if
-                    # using a model that was not trained with one
-                    # i.e. to behave like NeMo's change_attention_model()
-                    'global_tokens': global_tokens,
-                    'global_tokens_spacing': 1,
-                    'global_attn_separate': False,
-                    'att_context_size': [128, 128]
-                } if self_attention_model == 'rel_pos_local_attn' else {})
+                global_tokens=global_tokens,
+                global_tokens_spacing=global_tokens_spacing,
+                global_attn_separate=global_attn_separate,
+                att_context_size=att_context_size,
+                dropout=dropout,
+                dropout_att=dropout_att
             )
             self.layers.append(layer)
 
         self.decoder = ConvASRDecoder(
-            feat_in=512,
+            feat_in=d_model,
             num_classes=num_labels
         )
 
