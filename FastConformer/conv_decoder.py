@@ -45,8 +45,7 @@ class ConvASRDecoder(torch.nn.Module):
             self.__vocabulary = vocabulary
 
         self._feat_in = feat_in
-        # Add 1 for blank char
-        self._num_classes = num_classes + 1
+        self._num_classes = num_classes
 
         self.decoder_layers = torch.nn.Sequential(
             torch.nn.Conv1d(self._feat_in, self._num_classes, kernel_size=1, bias=True)

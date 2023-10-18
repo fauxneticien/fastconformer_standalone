@@ -7,8 +7,16 @@ from collections import OrderedDict
 from .filterbank_features import FilterbankFeatures
 from .conv_subsampling import ConvSubsampling
 from .multi_head_attention import RelPositionalEncoding, LocalAttRelPositionalEncoding
-from .conformer_encoder import _create_masks, ConformerLayer
+from .conformer_encoder import _create_masks, ConformerLayer, ConformerConvolution, ConformerFeedForward
 from .conv_decoder import ConvASRDecoder
+
+def _init_conformer_params(module):
+    if isinstance(module, ConvSubsampling):
+        module.reset_parameters()
+    if isinstance(module, ConformerConvolution):
+        module.reset_parameters_conv()
+    if isinstance(module, ConformerFeedForward):
+        module.reset_parameters_ff()
 
 class FastConformer(torch.nn.Module):
 
@@ -154,4 +162,4 @@ class FastConformer(torch.nn.Module):
 
         log_probs = torch.nn.functional.log_softmax(decoder_output, dim=-1)
 
-        return log_probs
+        return log_probs, preenc_lens
