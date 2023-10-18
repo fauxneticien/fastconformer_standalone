@@ -1,0 +1,16 @@
+lr: 1e-4
+max_updates: 400_000
+checkpoint_every_n_updates: 25_000
+
+encoder:
+  num_labels: 512
+  num_layers: 16
+  self_attention_model: 'rel_pos_local_attn'
+  global_tokens: 0
+  subsampling: 'dw_striding'
+  subsampling_factor: 4
+  d_model: 256
+  n_heads: 4
+  att_context_size:
+  - 128
+  - 128
